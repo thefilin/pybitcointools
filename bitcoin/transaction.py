@@ -365,11 +365,17 @@ def sign(tx, i, priv, hashcode=SIGHASH_ALL):
     if len(priv) <= 33:
         priv = safe_hexlify(priv)
     pub = privkey_to_pubkey(priv)
-    address = pubkey_to_address(pub)
-    signing_tx = signature_form(tx, i, mk_pubkey_script(address), hashcode)
+
+    sha256 = hashlib.new('sha256')
+    sha256.update(encode_pubkey(pub, 'bin_compressed'))
+    hash160 = hashlib.new('rmd160')
+    hash160.update(sha256.digest())
+    script = '76a914' + hash160.hexdigest() + '88ac'
+
+    signing_tx = signature_form(tx, i, script, hashcode)
     sig = ecdsa_tx_sign(signing_tx, priv, hashcode)
     txobj = deserialize(tx)
-    txobj["ins"][i]["script"] = serialize_script([sig, pub])
+    txobj["ins"][i]["script"] = serialize_script([sig, encode_pubkey(pub, 'hex_compressed')])
     return serialize(txobj)
 
 
